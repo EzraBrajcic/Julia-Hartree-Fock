@@ -164,6 +164,6 @@ For questions, bug reports, or support inquiries, please contact:
 
 ---
 
-**Version**: 0.1.0  
+**Version**: 0.2.0  
 **Julia Version**: 1.11.7  
-**Last Updated**: January 2026
+**Last Updated**: July 2026
