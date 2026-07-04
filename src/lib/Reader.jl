@@ -77,7 +77,7 @@ function ReadAtomBFs(Element::String)
             NewOrbital = true
 
             for Row in Rows
-                Data = split(strip(row), r"(\t+\s+|\t+|\s+)")
+                Data = split(strip(Row), r"(\t+\s+|\t+|\s+)")
                 len = length(Data)
 
                 if len < 4

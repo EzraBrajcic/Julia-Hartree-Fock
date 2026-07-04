@@ -132,11 +132,11 @@ function main()
     to = TimerOutput()
 
     # ── Basis set construction ────────────────────────────────────────────────
-    Basis = GenerateBasisSet(ReadAtomBFs("Si_3P.dat"), 14)
+    Basis = GenerateBasisSet(ReadAtomBFs("C_1S.dat"), 6)
 
     # ── Electronic structure parameters ───────────────────────────────────────
-    occα = [1,1,1,1,1,1,1,1,0]
-    occβ = [1,1,1,1,1,1,0,0,0]
+    occα = [1,1,0,1,0]
+    occβ = [1,1,0,1,0]
     EC   = GenerateEC(occα, occβ)
 
     # ── Working arrays ───────────────────────────────────────────────────────
@@ -167,7 +167,7 @@ function main()
 
     Cα_InitR = C_Init
     Cβ_InitR = C_Init
-    Cβ_InitR[6:7, 6:7] *= [cos(π/4) -sin(π/4); sin(π/4) cos(π/4)]
+    Cβ_InitR[4:5, 4:5] *= [cos(π/4) -sin(π/4); sin(π/4) cos(π/4)]
     Pα, Pβ, P_Init, M = DensityMatrices(Cα_InitR, Cβ_InitR, EC)
 
     # ── SCF procedure ─────────────────────────────────────────────────────────
@@ -195,7 +195,7 @@ function main()
     
     fig = PlotElectronDensityVolume(Basis, P; range=(-10, 10), resolution=500, isovalue=5.0e-10)
     display(fig)
-    save("Data/Output/Silicon(3P) 1 Electron Density (diffuse).png", fig, update=false)
+    save("Data/Output/Carbon(1S) 1 Electron Density (diffuse).png", fig, update=false)
 end
 
 # Run main when executed

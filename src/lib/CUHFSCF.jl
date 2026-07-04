@@ -456,7 +456,8 @@ function DIIS(TransformationMatrix::Matrix{Float64}, S::Matrix{Float64}, Fcs::Ma
     # ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
     if length(ErrorList) == 5
         popfirst!(ErrorList)
-        popfirst!(FockList)
+        popfirst!(FockListα)
+        popfirst!(FockListβ)
     end
 
     # ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
