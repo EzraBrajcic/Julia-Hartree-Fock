@@ -66,7 +66,7 @@ Julia Hartree-Fock/
 │   └── lib/
 │       ├── DataTypes.jl            # Structs used throughout code
 │       ├── GPUPlotPoint.jl         # GPU Accelerated 1-electron density plotting
-│       ├── HFSCF.jl                # Hartree-Fock SCF solver
+│       ├── HFSCF.jl                # Restricted Hartree-Fock SCF solver (depreciated)
 │       ├── CUHFSCF.jl              # ROHF SCF solver
 │       ├── Reader.jl               # Reads input data and converts into structs
 │       └── STOFuncs.jl             # STO Integrals
