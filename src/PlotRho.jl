@@ -106,11 +106,11 @@ function PlotElectronDensityVolume(Basis, P; range=(-3.0, 3.0), resolution=50, i
     threshold_log = log10(isovalue)
     vmin, vmax = minimum(threshold_log), maximum(rho_log)
 
-    colormap = to_colormap(:curl)
+    colormap = to_colormap(:plasma)
     colormap[1] = RGBAf(7,7,7,0)
 
     vol = volume!(ax, x_range, y_range, z_range, rho_log,
-                algorithm = :mip,
+                algorithm = :absorption,
                 colormap = colormap,
                 colorrange = (vmin, vmax),
                 absorption = 3.5,
@@ -132,11 +132,11 @@ function main()
     to = TimerOutput()
 
     # ── Basis set construction ────────────────────────────────────────────────
-    Basis = GenerateBasisSet(ReadAtomBFs("C_1S.dat"), 6)
+    Basis = GenerateBasisSet(ReadAtomBFs("Ti_3F.dat"), 22)
 
     # ── Electronic structure parameters ───────────────────────────────────────
-    occα = [1,1,0,1,0]
-    occβ = [1,1,0,1,0]
+    occα = [1,1,1,1,1,1,1,1,1,1,1,1,0,0,0]
+    occβ = [1,1,1,1,1,1,1,1,1,1,0,0,0,0,0]
     EC   = GenerateEC(occα, occβ)
 
     # ── Working arrays ───────────────────────────────────────────────────────
@@ -167,12 +167,12 @@ function main()
 
     Cα_InitR = C_Init
     Cβ_InitR = C_Init
-    Cβ_InitR[4:5, 4:5] *= [cos(π/4) -sin(π/4); sin(π/4) cos(π/4)]
+    Cβ_InitR[14:15, 14:15] *= [cos(π/4) -sin(π/4); sin(π/4) cos(π/4)]
     Pα, Pβ, P_Init, M = DensityMatrices(Cα_InitR, Cβ_InitR, EC)
 
     # ── SCF procedure ─────────────────────────────────────────────────────────
     max_iter = 50000
-    ConvC    = 5.0e-17
+    ConvC    = 5.0e-14
     P_Guess  = P_Init
 
     FinalEnergy, Ei, Count, ΔPα, ΔPβ, RMS_R, max_R,
@@ -193,9 +193,9 @@ function main()
 
     set_theme!(theme_dark())
     
-    fig = PlotElectronDensityVolume(Basis, P; range=(-10, 10), resolution=500, isovalue=5.0e-10)
+    fig = PlotElectronDensityVolume(Basis, P; range=(-0.75, 0.75), resolution=500, isovalue=3.75e-8)
     display(fig)
-    save("Data/Output/Carbon(1S) 1 Electron Density (diffuse).png", fig, update=false)
+    save("Data/Output/Titanium(3F) 1 Electron Density (tight absorption).png", fig, update=false)
 end
 
 # Run main when executed
