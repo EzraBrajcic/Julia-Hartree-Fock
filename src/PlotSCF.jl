@@ -120,9 +120,9 @@ function StyleAxis!(ax; Title="", xlabel="", ylabel="")
     ax.xgridvisible      = false
     ax.ygridcolor        = (BORDER, 0.6)
     ax.ygridwidth        = 0.8
-    ax.Title             = Title
-    ax.Titlecolor        = FG
-    ax.Titlesize         = 13
+    ax.title             = Title
+    ax.titlecolor        = FG
+    ax.titlesize         = 13
     ax.xlabel            = xlabel
     ax.xlabelcolor       = FG_DIM
     ax.ylabel            = ylabel

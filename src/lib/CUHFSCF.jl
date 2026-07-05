@@ -128,28 +128,39 @@ function FockMatrixInts(Basis::BasisSet, to::TimerOutput)
 
     # ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
     # Compute Coulomb repulsion and electron exchange matrix elements of the complete Fock matrix, view CoulombInt() and ExchangeInt() in STOFuncs.jl for more information. The Fock matrix is the sum of the core Hamiltonian and the electron-electron repulsion matrices, which are both one-electron operators.
-    # Iterating only from μ = 1 to N and ν = μ to N to exploit
-    # symmetry conditions since Fock matrix is symmetric about the diagonal.
-    # Off-diagonal values can then just be copied from the first half of the matrix
-    # about the diagonal reducing the number of computations by half
+    # The 2-electron Coulomb integral matrix is symmetric about <μν|J|λσ> = <νμ|J|σλ> = <λσ|J|μν>* = <σλ|J|νμ>*
+    # as proven by https://hal.science/hal-04046322v2. The exchange integral, represented as the exchange of orbital
+    # indices and centres in the Coulomb integral <μν|K|λσ> = <μλ|J|σν> therefore has the same symmetry conditions.
+    # We can then Iterate from μ = 1 to N, ν = μ to N, λ = 1 to N, and σ = λ to N and then apply a lexicographic
+    # ordering to exploit said symmetry conditions resulting in up to an 8-fold decrease in the number of computed integrals.
     # ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
     N = Basis.BasisSize
     J = zeros(Float64, N, N, N, N)
     K = zeros(Float64, N, N, N, N)
 
-    pμ = Progress(N; desc="Computing Coulomb and exchange integrals", dt=0.2)
+    # Lexicographic ordering of indices to avoid computing duplicate integrals. For example, if (μν|λσ) is computed, then (λσ|μν) does not need to be computed since they are equal by symmetry. The lexicographic ordering ensures that the indices are always in a specific order, which allows for efficient computation of the integrals.
+    lexleq(l::Int, m::Int, n::Int, o::Int) = (l < n) || (l == n && m <= o)
 
+    pμ = Progress(N; desc="Computing Coulomb and exchange integrals", dt=0.2)
     for μ in 1:N
         for ν in μ:N
             for λ in 1:N
-                for σ in 1:N
+                for σ in λ:N
+
+                    # exploit (μν|λσ) = (λσ|μν)
+                    if !lexleq(μ, ν, λ, σ)
+                        continue
+                    end
+
                     j = 0.0
                     k = 0.0
                     for STOμ in Basis.BasisFunctions[μ].STOs
                         for STOν in Basis.BasisFunctions[ν].STOs
                             for STOλ in Basis.BasisFunctions[λ].STOs
                                 for STOσ in Basis.BasisFunctions[σ].STOs
+
+                                    # Please ignore this funky function variable call ordering...
                                     @timeit to "Coulomb Integral" begin
                                         j += CoulombInt(STOμ, STOλ, STOν, STOσ)
                                     end
@@ -161,13 +172,22 @@ function FockMatrixInts(Basis::BasisSet, to::TimerOutput)
                         end
                     end
 
+                    # canonical (μνλσ)
                     J[μ,ν,λ,σ] = j
                     K[μ,ν,λ,σ] = k
+
+                    # (νμσλ)
+                    J[ν,μ,σ,λ] = j
+                    K[ν,μ,σ,λ] = k
+
+                    # (λσμν)
+                    J[λ,σ,μ,ν] = j
+                    K[λ,σ,μ,ν] = k
+
+                    # (σλνμ)
+                    J[σ,λ,ν,μ] = j
+                    K[σ,λ,ν,μ] = k
                 end
-            end
-            if μ != ν
-                J[ν,μ, :, :] .= J[μ,ν, :, :]
-                K[ν,μ, :, :] .= K[μ,ν, :, :]
             end
         end
         next!(pμ)
@@ -226,10 +246,11 @@ function FockMatrix(H::Matrix{Float64}, J::Array{Float64,4}, K::Array{Float64,4}
 
     # ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
     # Compute full Fock matrix elements
-    # Iterating only from μ = 1 to N and ν = μ to N to exploit
-    # symmetry conditions since Fock and density matrix are symmetric about the diagonal.
-    # Off-diagonal values can then just be copied from the first half of the matrix
-    # about the diagonal reducing the number of computations by half
+    # The 2-electron Coulomb integral matrix is symmetric about <μν|J|λσ> = <νμ|J|σλ> = <λσ|J|μν>* = <σλ|J|νμ>*
+    # as proven by https://hal.science/hal-04046322v2. The exchange integral, represented as the exchange of orbital
+    # indices and centres in the Coulomb integral <μν|K|λσ> = <μλ|J|σν> therefore has the same symmetry conditions.
+    # We can then Iterate from μ = 1 to N, ν = μ to N, λ = 1 to N, and σ = λ to N to exploit said symmetry conditions
+    # resulting in up to a 4-fold decrease in the number of total iterations needed.
     # ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
     N = size(H, 1)
@@ -243,13 +264,23 @@ function FockMatrix(H::Matrix{Float64}, J::Array{Float64,4}, K::Array{Float64,4}
                 ClosedShell = 0.0
                 ExchangeCorrection = 0.0
                 for λ in 1:N
-                    for σ in 1:N
-                        ClosedShell += P[λ,σ] * (J[μ,ν,λ,σ] - 0.5 * K[μ,ν,λ,σ])
-                        ExchangeCorrection += M[λ,σ] * K[μ,ν,λ,σ]
+                    for σ in λ:N
+
+                        j = J[μ,ν,λ,σ]
+                        k = K[μ,ν,λ,σ]
+                        
+                        # exact contraction over all (λ,σ) using upper-triangular storage
+                        p = (λ == σ) ? P[λ, σ] : P[λ, σ] + P[σ, λ]
+                        m = (λ == σ) ? M[λ, σ] : M[λ, σ] + M[σ, λ]
+
+                        ClosedShell += p * (j - 0.5 * k)
+                        ExchangeCorrection += m * k
                     end
                 end
+
                 Fcs[μ,ν] += ClosedShell
                 KM[μ,ν] += ExchangeCorrection
+
                 if μ != ν
                     Fcs[ν,μ] = Fcs[μ,ν]
                     KM[ν,μ] = KM[μ,ν]

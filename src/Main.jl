@@ -51,7 +51,7 @@ function main()
 
     # ── SCF procedure ─────────────────────────────────────────────────────────
     max_iter = 50000
-    ConvC    = 5.0e-14
+    ConvC    = 5.0e-15
     P_Guess  = P_Init
 
     FinalEnergy, Ei, Count, ΔPα, ΔPβ, FNR, max_R,
