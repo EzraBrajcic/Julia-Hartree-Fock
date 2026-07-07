@@ -208,7 +208,7 @@ function ComputeRhoOnGPU!(AOMatrix::Matrix{Float32}, PMatrix::Matrix{Float64})
     PDev = cu(Array{Float32}(PMatrix))  # NBasis x NBasis
     RhoDev = CUDA.zeros(Float32, NPoints)
 
-    threads = 128
+    threads = 512
     blocks = cld(NPoints, threads)
     @cuda threads=threads blocks=blocks KernelComputeRho!(RhoDev, AODev, PDev, NBasis, NPoints)
 

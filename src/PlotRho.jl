@@ -6,7 +6,7 @@ include("lib/CUHFSCF.jl")
 include("lib/GPUPlotPoint.jl")
 include("lib/Reader.jl")
 
-function PlotElectronDensityVolume(Basis, P; range=(-3.0, 3.0), resolution=50, isovalue=1.0e-2)
+function PlotElectronDensityVolume(Basis, P; range=(-3.0, 3.0), resolution=50, IsoValue=1.0e-2)
     # Creates a 3D volumetric visualization of electron density
 
     # Arguments:
@@ -14,7 +14,7 @@ function PlotElectronDensityVolume(Basis, P; range=(-3.0, 3.0), resolution=50, i
     # `P`: Density matrix from SCF calculation
     # `range`: Tuple specifying the spatial range (min, max) in atomic units
     # `resolution`: Number of grid points along each axis
-    # `isovalue`: Density threshold for isosurface rendering
+    # `IsoValue`: Density threshold for isosurface rendering
     
     # Generate 3D grid
     coords = LinRange(range[1], range[2], resolution)
@@ -52,7 +52,7 @@ function PlotElectronDensityVolume(Basis, P; range=(-3.0, 3.0), resolution=50, i
     PrimCountDev = cu(PrimCount)
     
     # Compute AO values
-    threads = 256
+    threads = 512
     total = NBasis * NPoints
     blocks = cld(total, threads)
     
@@ -88,13 +88,11 @@ function PlotElectronDensityVolume(Basis, P; range=(-3.0, 3.0), resolution=50, i
     # Create 3D visualization with volumetric rendering
     fig = Figure(size=(1440, 1440))
     ax = Axis3(fig[1, 1], 
-               xlabel="x (a₀)", 
-               ylabel="y (a₀)", 
-               zlabel="z (a₀)",
+               xlabel="x (a.u.)", 
+               ylabel="y (a.u.)", 
+               zlabel="z (a.u.)",
                title="Electron Density Volume",
                aspect=(1, 1, 1))
-
-
     
     # Extract endpoints for volume specification
     x_range = (coords[1], coords[end])
@@ -102,25 +100,55 @@ function PlotElectronDensityVolume(Basis, P; range=(-3.0, 3.0), resolution=50, i
     z_range = (coords[1], coords[end])
     
     # Define threshold in log space
-    rho_log = log10.(rho_volume)
-    threshold_log = log10(isovalue)
-    vmin, vmax = minimum(threshold_log), maximum(rho_log)
+    rho_log = log10.(abs.(rho_volume))
+    vmin = minimum(rho_log)
+    vmax = maximum(rho_log)
 
-    colormap = to_colormap(:plasma)
-    colormap[1] = RGBAf(7,7,7,0)
+    ColorMap = to_colormap((:plasma, 1.0))
+    ColorMap[1] = RGBAf(5,5,5,0)
+    ColorMap = Observable(ColorMap)
+    ColorRange = Observable((vmin, vmax))
+    Absorption = Observable(5.0)
+
+    InitialRange = vmax - vmin
+    InitialAbsorption = 5.0
+
+    BaseColorMap =  to_colormap((:plasma, 1.0))
+    ncolors  = length(BaseColorMap)
+
+    function TransparentLowColorMap(Lower, vmin, vmax)
+        t = clamp((Lower - vmin) / (vmax - vmin), 0.0, 1.0)
+        startidx = clamp(floor(Int, t * (ncolors - 1)) + 1, 1, ncolors)
+
+        cmap = copy(BaseColorMap)
+        for i in 1:startidx-1
+            cmap[i] = RGBAf(5, 5, 5, 0f0)
+        end
+        return cmap
+    end
+
+    IsoSlider = Slider(fig[1,3], 
+        range = LinRange(vmin, vmax, 1000), 
+        horizontal = false,
+        startvalue = log10(IsoValue),
+        update_while_dragging = true)
+
+    on(IsoSlider.value) do Lower
+        ColorMap[] = TransparentLowColorMap(Lower, vmin, vmax)
+        Absorption[] = InitialAbsorption * (InitialRange / vmax - Lower)^2
+    end
 
     vol = volume!(ax, x_range, y_range, z_range, rho_log,
                 algorithm = :absorption,
-                colormap = colormap,
-                colorrange = (vmin, vmax),
-                absorption = 3.5,
+                colormap = ColorMap,
+                colorrange = ColorRange,
+                absorption = 5.0,
                 shading = true,
                 backlight = 0.75,
                 specular = 0.5,
                 shininess = 8)
     
-    Colorbar(fig[1, 2], vol, label="log(ρ(r)) (a.u.)")
-    
+    Colorbar(fig[1, 2], vol, label="ρ(r) (a.u.)")
     
     println("Visualization complete!")
     
@@ -193,9 +221,9 @@ function main()
 
     set_theme!(theme_dark())
     
-    fig = PlotElectronDensityVolume(Basis, P; range=(-0.75, 0.75), resolution=500, isovalue=3.75e-8)
+    fig = PlotElectronDensityVolume(Basis, P; range=(-2, 2), resolution=500, IsoValue=5.0e-9)
     display(fig)
-    save("Data/Output/Titanium(3F) 1 Electron Density (tight absorption).png", fig, update=false)
+    save("Data/Output/Titanium(3F) 1 Electron Density (dynamic absorption).png", fig, update=false)
 end
 
 # Run main when executed

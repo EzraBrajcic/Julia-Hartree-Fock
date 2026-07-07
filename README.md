@@ -141,7 +141,7 @@ Complete dependency information including all transitive dependencies is availab
 |---------|---------|---------|
 | CUDA | 5.9+ | GPU computation |
 | Plots | 1.x | 2D plotting |
-| GLMakie | 0.13+ | 3D visualization |
+| GLMakie | 0.20+ | 3D visualization |
 | GSL | 1.x | Scientific computations |
 | PrettyTables | 3.x | Console output formatting |
 | ProgressMeter | 1.x | Progress tracking |
@@ -165,5 +165,5 @@ For questions, bug reports, or support inquiries, please contact:
 ---
 
 **Version**: 0.2.0  
-**Julia Version**: 1.11.7  
+**Julia Version**: 1.12.6  
 **Last Updated**: July 2026

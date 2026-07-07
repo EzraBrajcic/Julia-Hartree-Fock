@@ -160,18 +160,18 @@ function EigenvalueTable!(ax, evalsα, evalsβ, occα, occβ)
     #    0.04  │  #
     #    0.12  │  εα (Eₕ)          ← 36 % of width
     #    0.50  │  εβ (Eₕ)          ← 36 % of width
-    #    0.97  │  occ (right-align) ← remaining, no clipping
+    #    0.97  │  occ (right-align) ← remaining
     # ─────────────────────────────────────────────────────────────────────────────
 
     n  = length(evalsα)
-    rh = 1.0 / (n + 1)      # +1 for header row
+    rh = 1.25 / (n + 1)      # +1 for header row
 
     hidedecorations!(ax)
 
     # x anchor positions
     x_idx  = 0.04
     x_ea   = 0.14
-    x_eb   = 0.52
+    x_eb   = 0.475
     x_occ  = 0.97            # right-aligned
 
     # Header row
@@ -214,10 +214,10 @@ function EigenvalueTable!(ax, evalsα, evalsβ, occα, occβ)
     xlims!(ax, 0, 1);  ylims!(ax, 0, 1)
 end
 
-function shared_colorbar!(fig, pos, cmap, clim, lbl)
+function SharedColorbar!(fig, pos, cmap, clim, lbl)
 
     # ─────────────────────────────────────────────────────────────────────────────
-    #  shared_colorbar! – thin vertical colorbar, factored for reuse
+    #  SharedColorbar! – thin vertical colorbar, factored for reuse
     # ─────────────────────────────────────────────────────────────────────────────
 
     Colorbar(fig[pos...];
@@ -236,8 +236,8 @@ function PlotResultsSCF(
         Basis, EC,
         H_evecs, C_Init, P_Init,
         ConvC, Count, max_iter,
-        FinalEnergy, ΔPα, ΔPβ,
-        Ei,
+        ΔPα, ΔPβ, FNR, max_R,
+        FinalEnergy, Ei,
         evalsα, evalsβ,
         evecsα, evecsβ,
         Cα, Cβ,
@@ -339,6 +339,8 @@ function PlotResultsSCF(
         ("Converged",       converged ? "Yes  ✓" : "No  ✗"),
         ("ΔPα  (final)",    @sprintf("%.4e", ΔPα)),
         ("ΔPβ  (final)",    @sprintf("%.4e", ΔPβ)),
+        ("FNR (final)",     @sprintf("%.4e", FNR)),
+        ("Max Residual",    @sprintf("%.4e", max_R)),
         ("⟨S²⟩ exact",      @sprintf("%.6f", S2_exact)),
         ("⟨S²⟩ UHF",        @sprintf("%.6f", S2_uhf)),
         ("Spin contam.",    @sprintf("%.6f", S2_contam)),
@@ -391,7 +393,7 @@ function PlotResultsSCF(
     # ═══════════════════════════════════════════════════════════════════════════
     SectionLabel!(fig, 9, 1, "ORBITAL EIGENVALUES")
 
-    eval_ax = Axis(fig[10, 1];
+    eval_ax = Axis(fig[10:11, 1];
         backgroundcolor  = PANEL_BG,
         leftspinecolor   = BORDER, rightspinecolor  = BORDER,
         topspinecolor    = BORDER, bottomspinecolor = BORDER,
@@ -422,7 +424,7 @@ function PlotResultsSCF(
     MatrixAxis!(axA[2], Cα;      Title = "Cα",                    cmap = CMAP_DIV,  clim = clim_C,    mat_name = "Cα")
     MatrixAxis!(axA[3], Cβ;      Title = "Cβ",                    cmap = CMAP_DIV,  clim = clim_C,    mat_name = "Cβ")
     MatrixAxis!(axA[4], H_evecs; Title = "H Core Eigenvectors",   cmap = CMAP_DIV,  clim = clim_Hev,  mat_name = "H_evecs")
-    shared_colorbar!(fig, [2, 6], CMAP_DIV, clim_C, "Cα / Cβ")
+    SharedColorbar!(fig, [2, 6], CMAP_DIV, clim_C, "Cα / Cβ")
 
     # ── Row B : Fα | Fβ | Fα_ortho | Fβ_ortho ────────────────────────────────
     SectionLabel!(fig, 3, 2:5, "FOCK MATRICES  ·  AO AND ORTHOGONAL BASIS")
@@ -432,7 +434,7 @@ function PlotResultsSCF(
     MatrixAxis!(axB[2], Fβ;       Title = "Fβ",               cmap = CMAP_DIV, clim = clim_F,  mat_name = "Fβ")
     MatrixAxis!(axB[3], Fα_Ortho; Title = "Fα  (Orthogonal)", cmap = CMAP_DIV, clim = clim_FO, mat_name = "Fα_ortho")
     MatrixAxis!(axB[4], Fβ_Ortho; Title = "Fβ  (Orthogonal)", cmap = CMAP_DIV, clim = clim_FO, mat_name = "Fβ_ortho")
-    shared_colorbar!(fig, [4, 6], CMAP_DIV, clim_F, "Fα / Fβ")
+    SharedColorbar!(fig, [4, 6], CMAP_DIV, clim_F, "Fα / Fβ")
 
     # ── Row C : evecsα | evecsβ | C_Init | M ────────────────────────────
     SectionLabel!(fig, 5, 2:5, "EIGENVECTORS  ·  INITIAL COEFFICIENT MATRIX  ·  SPIN DENSITY")
@@ -442,7 +444,7 @@ function PlotResultsSCF(
     MatrixAxis!(axC[2], evecsβ;  Title = "Eigenvectors β",     cmap = CMAP_DIV,  clim = clim_evec, mat_name = "evecsβ")
     MatrixAxis!(axC[3], C_Init;  Title = "C  (Initial guess)", cmap = CMAP_DIV,  clim = clim_Cini, mat_name = "C_i")
     MatrixAxis!(axC[4], M;  Title = "M",  cmap = CMAP_SPIN, clim = clim_M,    mat_name = "M")
-    shared_colorbar!(fig, [6, 6], CMAP_DIV, clim_evec, "evecs α / β")
+    SharedColorbar!(fig, [6, 6], CMAP_DIV, clim_evec, "evecs α / β")
 
     # ── Row D : Pα | Pβ | P_Init | P_f (all on shared density scale) ─────
     SectionLabel!(fig, 7, 2:5, "DENSITY MATRICES  ·  SPIN COMPONENTS AND TOTAL")
@@ -452,14 +454,14 @@ function PlotResultsSCF(
     MatrixAxis!(axD[2], Pβ; Title = "Pβ",      cmap = CMAP_DENS, clim = clim_P, mat_name = "Pβ")
     MatrixAxis!(axD[3], P_Init;   Title = "P  (Initial)",      cmap = CMAP_DENS, clim = clim_P, mat_name = "P_i")
     MatrixAxis!(axD[4], P;  Title = "P  (Final)",  cmap = CMAP_DENS, clim = clim_P, mat_name = "P_f")
-    shared_colorbar!(fig, [8, 6], CMAP_DENS, clim_P, "Density")
+    SharedColorbar!(fig, [8, 6], CMAP_DENS, clim_P, "Density")
 
     # ═══════════════════════════════════════════════════════════════════════════
     #  CONVERGENCE PLOT  row 10, cols 2-5  (shares row with eigenvalue table)
     # ═══════════════════════════════════════════════════════════════════════════
     SectionLabel!(fig, 9, 2:5, "SCF ENERGY CONVERGENCE")
 
-    conv_ax = Axis(fig[10, 2:5])
+    conv_ax = Axis(fig[10:11, 2:5])
     StyleAxis!(conv_ax; xlabel = "Iteration #", ylabel = "E (Eₕ)")
 
     scatter!(conv_ax, 1:length(Ei), Ei; color = ACCENT, markersize = 8)

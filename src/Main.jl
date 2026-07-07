@@ -51,7 +51,7 @@ function main()
 
     # ── SCF procedure ─────────────────────────────────────────────────────────
     max_iter = 50000
-    ConvC    = 5.0e-15
+    ConvC    = 5.0e-14
     P_Guess  = P_Init
 
     FinalEnergy, Ei, Count, ΔPα, ΔPβ, FNR, max_R,
@@ -76,8 +76,8 @@ function main()
         Basis, EC,                       # basis + electronic config
         H_evecs, Cβ_InitR, P_Guess,          # initial guess
         ConvC, Count, max_iter,          # convergence metadata
-        FinalEnergy, ΔPα, ΔPβ,           # final energetics
-        Ei,                              # per-iteration energies
+        ΔPα, ΔPβ, FNR, max_R,            # final convergence parameters
+        FinalEnergy, Ei,                 # final energy & per-iteration energies
         evalsα, evalsβ,                  # final eigenvalues
         evecsα, evecsβ,                  # final eigenvectors
         Cα, Cβ,                          # final coefficient matrices
